@@ -3,6 +3,7 @@ import "./style.css";
 import leaflet from "leaflet";
 import luck from "./luck";
 import "./leafletWorkaround";
+import { Board } from "./board"; // Import the Board class
 
 
 class CoordinateConverter {
@@ -42,9 +43,10 @@ const NULL_ISLAND = {
 // });
 
 const GAMEPLAY_ZOOM_LEVEL = 19;
-const TILE_DEGREES = 0.0001;  //1e-4;
-const NEIGHBORHOOD_SIZE = 8;
+//const TILE_DEGREES = 0.0001;  //1e-4;
+//const NEIGHBORHOOD_SIZE = 8;
 const PIT_SPAWN_PROBABILITY = 0.1;
+const board = new Board(0.0001, 8);
 
 const mapContainer = document.querySelector<HTMLElement>("#map")!;
 
@@ -80,6 +82,17 @@ sensorButton.addEventListener("click", () => {
         makeCells(playerLocation);
     });
 });
+
+const moveButtonNorth = document.querySelector("#north")!;
+const moveButtonSouth = document.querySelector("#south")!;
+const moveButtonEast = document.querySelector("#east")!;
+const moveButtonWest = document.querySelector("#west")!;
+
+moveButtonNorth.addEventListener("click", () => movePlayer("north"));
+moveButtonSouth.addEventListener("click", () => movePlayer("south"));
+moveButtonEast.addEventListener("click", () => movePlayer("east"));
+moveButtonWest.addEventListener("click", () => movePlayer("west"));
+
    
 let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
@@ -87,8 +100,8 @@ statusPanel.innerHTML = "No points yet...";
 
 function makePit(i: number, j: number) {
     const bounds = leaflet.latLngBounds([
-        [NULL_ISLAND.lat + i * TILE_DEGREES, NULL_ISLAND.lng + j * TILE_DEGREES],
-        [NULL_ISLAND.lat + (i + 1) * TILE_DEGREES, NULL_ISLAND.lng + (j + 1) * TILE_DEGREES],
+        [NULL_ISLAND.lat + i * board.tileWidth, NULL_ISLAND.lng + j * board.tileWidth],
+        [NULL_ISLAND.lat + (i + 1) * board.tileWidth, NULL_ISLAND.lng + (j + 1) * board.tileWidth],
     ]);
 
     //const pit = leaflet.rectangle(bounds) as leaflet.Layer;
@@ -135,14 +148,38 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
     const coordinateConverter = new CoordinateConverter();
     const playerCell = coordinateConverter.convertToGameCell(playerLocation.lat, playerLocation.lng);
     if (playerCell) {
-        for (let i = playerCell.i - NEIGHBORHOOD_SIZE; i <= playerCell.i + NEIGHBORHOOD_SIZE; i++) {
-            for (let j = playerCell.j - NEIGHBORHOOD_SIZE; j <= playerCell.j + NEIGHBORHOOD_SIZE; j++) {
+        for (let i = playerCell.i - board.tileVisibilityRadius; i <= playerCell.i + board.tileVisibilityRadius; i++) {
+            for (let j = playerCell.j - board.tileVisibilityRadius; j <= playerCell.j + board.tileVisibilityRadius; j++) {
                 if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
                     makePit(i, j);
                 }
             }
         }
     }
+}
+
+function movePlayer(direction: "north" | "south" | "east" | "west") {
+    const currentLatLng = playerMarker.getLatLng();
+    let newLatLng;
+
+    switch (direction) {
+        case "north":
+            newLatLng = leaflet.latLng(currentLatLng.lat + board.tileWidth, currentLatLng.lng);
+            break;
+        case "south":
+            newLatLng = leaflet.latLng(currentLatLng.lat - board.tileWidth, currentLatLng.lng);
+            break;
+        case "east":
+            newLatLng = leaflet.latLng(currentLatLng.lat, currentLatLng.lng + board.tileWidth);
+            break;
+        case "west":
+            newLatLng = leaflet.latLng(currentLatLng.lat, currentLatLng.lng - board.tileWidth);
+            break;
+    }
+
+    playerMarker.setLatLng(newLatLng);
+    map.setView(newLatLng);
+    makeCells(newLatLng);
 }
 
 makeCells(NULL_ISLAND);
