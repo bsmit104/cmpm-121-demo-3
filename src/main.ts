@@ -285,5 +285,5 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
   makeCells(newLatLng);
 }
 
-// Generate initial pits around Null Island
+// initial pits around Null Island
 makeCells(NULL_ISLAND);
