@@ -10,11 +10,13 @@ class Pit {
   i: number;
   j: number;
   value: number;
+  coins: Coin[];
 
   constructor(i: number, j: number) {
     this.i = i;
     this.j = j;
     this.value = 0;
+    this.coins = [];
   }
 
   toMomento() {
@@ -129,10 +131,47 @@ statusPanel.innerHTML = "No points yet...";
 
 const pits: Pit[] = [];
 
+interface Coin {
+  i: number;
+  j: number;
+  serial: number;
+}
+
+let inventory: string[] = [];
+
+//const pitPopups = new Map<Pit, leaflet.Popup>();
+
+// Add this function to update the pit's popup content
+function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
+  const container = document.createElement("div");
+  const numCoins = pit.value;
+
+  const coinDescriptions = pit.coins.map((coin) => {
+    const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+    return `
+      <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+    `;
+  });
+
+  container.innerHTML = `
+    <div>There is a pit here at i: "${pit.i}, j: ${
+    pit.j
+  }". It contains ${numCoins} </div>
+    ${coinDescriptions.join("")}
+    <button id="poke">poke</button>
+    <button id="stash">stash</button>`;
+
+  // Inside the bindPopup function, update the content
+  pitDisplay.bindPopup(() => {
+    return container;
+  });
+}
+
 function makePit(i: number, j: number, initialValue: number) {
   const pit = new Pit(i, j);
   pit.value = initialValue;
-  pits.push(pit);
+  //pits.push(pit);
+  pit.coins = [];
   const bounds = leaflet.latLngBounds([
     [
       NULL_ISLAND.lat + i * board.tileWidth,
@@ -150,46 +189,83 @@ function makePit(i: number, j: number, initialValue: number) {
     fillOpacity: 0.5,
   });
 
+  //const coins: Coin[] = []; // Array to hold coins in the pit
+
+  // Generate 1 to 4 coins in the pit
+  let numCoins = Math.floor(Math.random() * 4) + 1;
+  for (let serial = 0; serial < numCoins; serial++) {
+    pit.coins.push({ i, j, serial });
+  }
+
+  //let numCoinsText = numCoins;
+
   pitDisplay.bindPopup(() => {
-    const uniqueId = `${i}:${j}#${Math.floor(Math.random() * 1000)}`;
-    let value = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
     const container = document.createElement("div");
+    //let numCoins = pit.value;
+    const coinDescriptions = pit.coins.map((coin) => {
+      const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+      return `
+        <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+      `;
+    });
+
+    //const container = document.createElement("div");
     container.innerHTML = `
-                <div>There is a pit here at i: "${i}, j: ${j}". It has value <span id="value">${value}</span>. Unique ID: ${uniqueId}</div>
-                <button id="poke">poke</button>
-                <button id="stash">stash</button>`;
+      <div>There is a pit here at i: "${i}, j: ${j}". It contains ${numCoins} </div>
+      ${coinDescriptions.join("")}
+      <button id="poke">poke</button>
+      <button id="stash">stash</button>`;
+    updatePitPopup(pit, pitDisplay);
     const poke = container.querySelector<HTMLButtonElement>("#poke")!;
     poke.addEventListener("click", () => {
-      value--;
-      container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-        value.toString();
-      points++;
-      statusPanel.innerHTML = `${points} points accumulated`;
-
-      pit.value = value;
-
-      savePitsState();
-      restorePitsState();
-    });
-    const stash = container.querySelector<HTMLButtonElement>("#stash")!;
-    stash.addEventListener("click", () => {
-      if (points > 0) {
-        value++;
-        container.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-          value.toString();
-        points--;
+      console.log("clicked");
+      if (numCoins > 0) {
+        numCoins--;
+        points++;
         statusPanel.innerHTML = `${points} points accumulated`;
 
-        pit.value = value;
+        // Create a coin object and add it to the inventory list
+        const coin = { i, j, serial: pit.coins.length - numCoins - 1 };
+        inventory.push(`${i}:${j}#${coin.serial}`);
 
-        savePitsState();
-        restorePitsState();
-      } else {
-        alert("Not enough points");
+        console.log("Inventory:", inventory);
+
+        pit.coins.pop();
+        pit.value = numCoins;
+
+        updatePitPopup(pit, pitDisplay);
+      }
+    });
+
+    // Inside the bindPopup function
+    const stash = container.querySelector<HTMLButtonElement>("#stash")!;
+    stash.addEventListener("click", () => {
+      console.log("stash clicked");
+      if (inventory.length > 0) {
+        // Pop a coin identifier from the inventory
+        const coinIdentifier = inventory.pop();
+
+        if (coinIdentifier) {
+          // Extract the i, j, and serial values from the coin identifier
+          const [i, j, serial] = coinIdentifier.split(":").map(Number);
+
+          // Add a new Coin object to the list of coins in the selected pit
+          pit.coins.push({ i, j, serial });
+
+          console.log("Inventory:", inventory);
+          console.log("coins:", inventory);
+
+          numCoins++;
+          points--;
+          statusPanel.innerHTML = `${points} points accumulated`;
+          pit.value = numCoins;
+          updatePitPopup(pit, pitDisplay);
+        }
       }
     });
     return container;
   });
+
   pitDisplay.addTo(map);
 }
 
