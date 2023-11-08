@@ -140,10 +140,9 @@ interface Coin {
 let inventory: string[] = [];
 
 //const pitPopups = new Map<Pit, leaflet.Popup>();
-
 function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
   const container = document.createElement("div");
-  const numCoins = pit.value;
+  let numCoins = pit.value;
 
   const coinDescriptions = pit.coins.map((coin) => {
     const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
@@ -207,19 +206,13 @@ function makePit(i: number, j: number, initialValue: number) {
       `;
     });
 
-    //unique stack and poke id just in case
-    const pokeButtonId = `poke-${i}-${j}`;
-    const stashButtonId = `stash-${i}-${j}`;
-
     container.innerHTML = `
-      <div>There is a pit here at i: "${i}, j: ${j}". It contains ${numCoins} </div>
-      ${coinDescriptions.join("")}
-      <button id="${pokeButtonId}">poke</button>
-      <button id="${stashButtonId}">stash</button>`;
+      <div>There is a pit here at i: "${i}, j: ${j}". It contains <span id="numCoins">${numCoins}</span></div>
+      <span id="coinDes">${coinDescriptions.join("")}</span>
+      <button id="poke">poke</button>
+      <button id="stash">stash</button>`;
     updatePitPopup(pit, pitDisplay);
-    const poke = container.querySelector<HTMLButtonElement>(
-      `#${pokeButtonId}`
-    )!;
+    const poke = container.querySelector<HTMLButtonElement>("#poke")!;
     poke.addEventListener("click", () => {
       console.log("clicked");
       if (numCoins > 0) {
@@ -227,7 +220,7 @@ function makePit(i: number, j: number, initialValue: number) {
         points++;
         statusPanel.innerHTML = `${points} points accumulated`;
 
-        const coin = { i, j, serial: pit.coins.length - numCoins - 1 };
+        const coin = { i, j, serial: pit.coins.length - 1 };
         inventory.push(`${i}:${j}#${coin.serial}`);
 
         console.log("Inventory:", inventory);
@@ -235,20 +228,33 @@ function makePit(i: number, j: number, initialValue: number) {
         pit.coins.pop();
         pit.value = numCoins;
 
-        updatePitPopup(pit, pitDisplay);
+        // Update coinDescriptions
+        const coinDescriptions = pit.coins.map((coin) => {
+          const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+          return `
+        <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+      `;
+        });
+
+        container.querySelector<HTMLSpanElement>("#numCoins")!.innerHTML =
+          numCoins.toString();
+        container.querySelector<HTMLSpanElement>("#coinDes")!.innerHTML =
+          coinDescriptions.join("").toString();
+        //updatePitPopup(pit, pitDisplay);
       }
     });
 
-    const stash = container.querySelector<HTMLButtonElement>(
-      `#${stashButtonId}`
-    )!;
+    const stash = container.querySelector<HTMLButtonElement>("#stash")!;
     stash.addEventListener("click", () => {
       console.log("stash clicked");
       if (inventory.length > 0) {
         const coinIdentifier = inventory.pop();
 
         if (coinIdentifier) {
-          const [i, j, serial] = coinIdentifier.split(":").map(Number);
+          //const [i, j, serial] = coinIdentifier.split(":").map(Number);
+          const [ij, coinSerial] = coinIdentifier.split("#");
+          const [i, j] = ij.split(":").map(Number);
+          const serial = Number(coinSerial);
 
           pit.coins.push({ i, j, serial });
 
@@ -259,7 +265,19 @@ function makePit(i: number, j: number, initialValue: number) {
           points--;
           statusPanel.innerHTML = `${points} points accumulated`;
           pit.value = numCoins;
-          updatePitPopup(pit, pitDisplay);
+
+          const coinDescriptions = pit.coins.map((coin) => {
+            const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+            return `
+          <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+        `;
+          });
+
+          container.querySelector<HTMLSpanElement>("#numCoins")!.innerHTML =
+            numCoins.toString();
+          container.querySelector<HTMLSpanElement>("#coinDes")!.innerHTML =
+            coinDescriptions.join("").toString();
+          //updatePitPopup(pit, pitDisplay);
         }
       }
     });
