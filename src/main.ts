@@ -141,7 +141,6 @@ let inventory: string[] = [];
 
 //const pitPopups = new Map<Pit, leaflet.Popup>();
 
-// Add this function to update the pit's popup content
 function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
   const container = document.createElement("div");
   const numCoins = pit.value;
@@ -161,7 +160,6 @@ function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
     <button id="poke">poke</button>
     <button id="stash">stash</button>`;
 
-  // Inside the bindPopup function, update the content
   pitDisplay.bindPopup(() => {
     return container;
   });
@@ -191,7 +189,7 @@ function makePit(i: number, j: number, initialValue: number) {
 
   //const coins: Coin[] = []; // Array to hold coins in the pit
 
-  // Generate 1 to 4 coins in the pit
+  // 1 to 4 coins in the pit
   let numCoins = Math.floor(Math.random() * 4) + 1;
   for (let serial = 0; serial < numCoins; serial++) {
     pit.coins.push({ i, j, serial });
@@ -209,14 +207,19 @@ function makePit(i: number, j: number, initialValue: number) {
       `;
     });
 
-    //const container = document.createElement("div");
+    //unique stack and poke id just in case
+    const pokeButtonId = `poke-${i}-${j}`;
+    const stashButtonId = `stash-${i}-${j}`;
+
     container.innerHTML = `
       <div>There is a pit here at i: "${i}, j: ${j}". It contains ${numCoins} </div>
       ${coinDescriptions.join("")}
-      <button id="poke">poke</button>
-      <button id="stash">stash</button>`;
+      <button id="${pokeButtonId}">poke</button>
+      <button id="${stashButtonId}">stash</button>`;
     updatePitPopup(pit, pitDisplay);
-    const poke = container.querySelector<HTMLButtonElement>("#poke")!;
+    const poke = container.querySelector<HTMLButtonElement>(
+      `#${pokeButtonId}`
+    )!;
     poke.addEventListener("click", () => {
       console.log("clicked");
       if (numCoins > 0) {
@@ -224,7 +227,6 @@ function makePit(i: number, j: number, initialValue: number) {
         points++;
         statusPanel.innerHTML = `${points} points accumulated`;
 
-        // Create a coin object and add it to the inventory list
         const coin = { i, j, serial: pit.coins.length - numCoins - 1 };
         inventory.push(`${i}:${j}#${coin.serial}`);
 
@@ -237,19 +239,17 @@ function makePit(i: number, j: number, initialValue: number) {
       }
     });
 
-    // Inside the bindPopup function
-    const stash = container.querySelector<HTMLButtonElement>("#stash")!;
+    const stash = container.querySelector<HTMLButtonElement>(
+      `#${stashButtonId}`
+    )!;
     stash.addEventListener("click", () => {
       console.log("stash clicked");
       if (inventory.length > 0) {
-        // Pop a coin identifier from the inventory
         const coinIdentifier = inventory.pop();
 
         if (coinIdentifier) {
-          // Extract the i, j, and serial values from the coin identifier
           const [i, j, serial] = coinIdentifier.split(":").map(Number);
 
-          // Add a new Coin object to the list of coins in the selected pit
           pit.coins.push({ i, j, serial });
 
           console.log("Inventory:", inventory);
