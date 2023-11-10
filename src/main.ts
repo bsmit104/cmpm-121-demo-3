@@ -139,32 +139,44 @@ interface Coin {
 
 let inventory: string[] = [];
 
-//const pitPopups = new Map<Pit, leaflet.Popup>();
-function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
-  const container = document.createElement("div");
-  let numCoins = pit.value;
+// //const pitPopups = new Map<Pit, leaflet.Popup>();
+// function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
+//   const container = document.createElement("div");
+//   let numCoins = pit.value;
 
-  const coinDescriptions = pit.coins.map((coin) => {
-    const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
-    return `
-      <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
-    `;
-  });
+//   const coinDescriptions = pit.coins.map((coin) => {
+//     const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+//     return `
+//       <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+//     `;
+//   });
 
-  container.innerHTML = `
-    <div>There is a pit here at i: "${pit.i}, j: ${
-    pit.j
-  }". It contains ${numCoins} </div>
-    ${coinDescriptions.join("")}
-    <button id="poke">poke</button>
-    <button id="stash">stash</button>`;
+//   container.innerHTML = `
+//     <div>There is a pit here at i: "${pit.i}, j: ${
+//     pit.j
+//   }". It contains ${numCoins} </div>
+//     ${coinDescriptions.join("")}
+//     <button id="poke">poke</button>
+//     <button id="stash">stash</button>`;
 
-  pitDisplay.bindPopup(() => {
-    return container;
-  });
-}
+//   pitDisplay.bindPopup(() => {
+//     return container;
+//   });
+// }
 
+const THRESHOLD = 0.0001; // Adjust this value as needed
 function makePit(i: number, j: number, initialValue: number) {
+  // Check if a pit already exists at this location
+  const existingPitIndex = pits.findIndex(
+    (pit) => Math.abs(pit.i - i) < THRESHOLD && Math.abs(pit.j - j) < THRESHOLD
+  );
+
+  if (existingPitIndex !== -1) {
+    console.log("Pit already exists at this location");
+    return;
+  }
+
+  console.log("Creating pit at", i, j);
   const pit = new Pit(i, j);
   pit.value = initialValue;
   pits.push(pit);
@@ -211,7 +223,7 @@ function makePit(i: number, j: number, initialValue: number) {
       <span id="coinDes">${coinDescriptions.join("")}</span>
       <button id="poke">poke</button>
       <button id="stash">stash</button>`;
-    updatePitPopup(pit, pitDisplay);
+    //updatePitPopup(pit, pitDisplay);
     const poke = container.querySelector<HTMLButtonElement>("#poke")!;
     poke.addEventListener("click", () => {
       console.log("clicked");
@@ -240,6 +252,7 @@ function makePit(i: number, j: number, initialValue: number) {
           numCoins.toString();
         container.querySelector<HTMLSpanElement>("#coinDes")!.innerHTML =
           coinDescriptions.join("").toString();
+        //savePitsState();
         //updatePitPopup(pit, pitDisplay);
       }
     });
@@ -277,6 +290,7 @@ function makePit(i: number, j: number, initialValue: number) {
             numCoins.toString();
           container.querySelector<HTMLSpanElement>("#coinDes")!.innerHTML =
             coinDescriptions.join("").toString();
+          //savePitsState();
           //updatePitPopup(pit, pitDisplay);
         }
       }
@@ -304,41 +318,42 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
 
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
         const initialValue = Math.floor(Math.random() * 10) + 1;
+        console.log("Attempting to create pit at location:", i, j);
         makePit(i, j, initialValue);
       }
     });
   }
 }
 
-function savePitsState() {
-  const pitStates = pits.map((pit) => {
-    return pit.toMomento();
-  });
-  localStorage.setItem("pitsState", JSON.stringify(pitStates));
-}
+// function makeCells(playerLocation: { lat: number; lng: number }) {
+//   const coordinateConverter = new CoordinateConverter();
+//   const playerCell = coordinateConverter.convertToGameCell(
+//     playerLocation.lat,
+//     playerLocation.lng
+//   );
 
-function restorePitsState() {
-  const pitStates = JSON.parse(localStorage.getItem("pitsState") || "[]");
-  pits.length = 0;
-  pitStates.forEach((momento: string) => {
-    const pitData = JSON.parse(momento);
+//   if (playerCell) {
+//     const playerLatLng = leaflet.latLng(playerLocation.lat, playerLocation.lng);
+//     const visibleCells = board.getCellsNearPoint(playerLatLng);
 
-    console.log("Restored pitData:", pitData);
-    const pit = new Pit(pitData.i, pitData.j);
-    pit.fromMomento(momento);
+//     visibleCells.forEach((cell) => {
+//       const i = cell.flyweight.i;
+//       const j = cell.flyweight.j;
 
-    console.log("Restored pit.value:", pit.value);
+//       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
+//         const initialValue = Math.floor(Math.random() * 10) + 1;
+//         makePit(i, j, initialValue);
+//       }
+//     });
+//   }
+// }
 
-    pit.value = pitData.value;
-    pits.push(pit);
-  });
-}
-
-setInterval(() => {
-  savePitsState();
-}, 0.01);
-
-restorePitsState();
+// function savePitsState() {
+//   const pitStates = pits.map((pit) => {
+//     return pit.toMomento();
+//   });
+//   localStorage.setItem("pitsState", JSON.stringify(pitStates));
+// }
 
 function movePlayer(direction: "north" | "south" | "east" | "west") {
   const currentLatLng = playerMarker.getLatLng();
