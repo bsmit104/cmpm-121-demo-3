@@ -167,7 +167,7 @@ function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
 function makePit(i: number, j: number, initialValue: number) {
   const pit = new Pit(i, j);
   pit.value = initialValue;
-  //pits.push(pit);
+  pits.push(pit);
   pit.coins = [];
   const bounds = leaflet.latLngBounds([
     [
@@ -293,6 +293,13 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
     playerLocation.lat,
     playerLocation.lng
   );
+  // if (momento) {
+  //   momento.forEach((pitMomento) => {
+  //     const pit = new Pit();
+  //     pit.fromMomento(pitMomento);
+  //     pits.push(pit);
+  //   });
+  // }
   if (playerCell) {
     for (
       let i = playerCell.i - board.tileVisibilityRadius;
@@ -337,11 +344,11 @@ function restorePitsState() {
   });
 }
 
-restorePitsState();
-
 setInterval(() => {
   savePitsState();
-}, 1);
+}, 0.01);
+
+restorePitsState();
 
 function movePlayer(direction: "north" | "south" | "east" | "west") {
   const currentLatLng = playerMarker.getLatLng();
@@ -381,3 +388,4 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
 
 // initial pits around Null Island
 makeCells(NULL_ISLAND);
+restorePitsState();
