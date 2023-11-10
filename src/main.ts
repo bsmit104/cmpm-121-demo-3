@@ -293,30 +293,20 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
     playerLocation.lat,
     playerLocation.lng
   );
-  // if (momento) {
-  //   momento.forEach((pitMomento) => {
-  //     const pit = new Pit();
-  //     pit.fromMomento(pitMomento);
-  //     pits.push(pit);
-  //   });
-  // }
+
   if (playerCell) {
-    for (
-      let i = playerCell.i - board.tileVisibilityRadius;
-      i <= playerCell.i + board.tileVisibilityRadius;
-      i++
-    ) {
-      for (
-        let j = playerCell.j - board.tileVisibilityRadius;
-        j <= playerCell.j + board.tileVisibilityRadius;
-        j++
-      ) {
-        if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
-          const initialValue = Math.floor(Math.random() * 10) + 1;
-          makePit(i, j, initialValue);
-        }
+    const playerLatLng = leaflet.latLng(playerLocation.lat, playerLocation.lng);
+    const visibleCells = board.getCellsNearPoint(playerLatLng);
+
+    visibleCells.forEach((cell) => {
+      const i = cell.flyweight.i;
+      const j = cell.flyweight.j;
+
+      if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
+        const initialValue = Math.floor(Math.random() * 10) + 1;
+        makePit(i, j, initialValue);
       }
-    }
+    });
   }
 }
 
@@ -388,4 +378,3 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
 
 // initial pits around Null Island
 makeCells(NULL_ISLAND);
-restorePitsState();
