@@ -340,11 +340,10 @@ function saveGameState() {
 
 // initial pits around Null Island
 makeCells(NULL_ISLAND);
-
 // Call this function whenever the game state changes
 function updateGameState() {
   saveGameState();
-  makeCells(playerMarker.getLatLng());
+  //makeCells(playerMarker.getLatLng());
 }
 
 function loadPitsState() {
@@ -443,3 +442,6 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
   map.setView(newLatLng);
   makeCells(newLatLng);
 }
+
+// // initial pits around Null Island
+// makeCells(NULL_ISLAND);
