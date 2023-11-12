@@ -62,6 +62,8 @@ const NULL_ISLAND = {
   lng: 0,
 };
 
+let playerMovementHistory: leaflet.LatLng[] = [];
+let playerMovementPolyline: leaflet.Polyline | null = null;
 const GAMEPLAY_ZOOM_LEVEL = 19;
 const PIT_SPAWN_PROBABILITY = 0.1;
 const board = new Board(0.0001, 8);
@@ -102,21 +104,52 @@ const playerMarker = leaflet.marker(NULL_ISLAND); // Initialize player at Null I
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
+let autoUpdatePosition = false;
+let watchId: number | null = null;
+
 const sensorButton = document.querySelector("#sensor")!;
 sensorButton.addEventListener("click", () => {
-  navigator.geolocation.watchPosition((position) => {
-    const playerLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude,
-    };
+  if (autoUpdatePosition) {
+    // If automatic updating is already enabled, disable it
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    autoUpdatePosition = false;
+  } else {
+    // If automatic updating is not enabled, enable it
+    watchId = navigator.geolocation.watchPosition((position) => {
+      const playerLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
 
-    playerMarker.setLatLng(playerLocation);
-    map.setView(playerLocation);
+      playerMarker.setLatLng(playerLocation);
+      map.setView(playerLocation);
 
-    makeCells(playerLocation);
-    //updateGameState();
-  });
+      makeCells(playerLocation);
+      //updateGameState();
+    });
+
+    autoUpdatePosition = true;
+  }
 });
+/////////////update location on press/////////////////
+// const sensorButton = document.querySelector("#sensor")!;
+// sensorButton.addEventListener("click", () => {
+//   navigator.geolocation.watchPosition((position) => {
+//     const playerLocation = {
+//       lat: position.coords.latitude,
+//       lng: position.coords.longitude,
+//     };
+
+//     playerMarker.setLatLng(playerLocation);
+//     map.setView(playerLocation);
+
+//     makeCells(playerLocation);
+//     //updateGameState();
+//   });
+// });
 
 const moveButtonNorth = document.querySelector("#north")!;
 const moveButtonSouth = document.querySelector("#south")!;
@@ -127,6 +160,69 @@ moveButtonNorth.addEventListener("click", () => movePlayer("north"));
 moveButtonSouth.addEventListener("click", () => movePlayer("south"));
 moveButtonEast.addEventListener("click", () => movePlayer("east"));
 moveButtonWest.addEventListener("click", () => movePlayer("west"));
+
+const resetButton = document.querySelector("#reset")!;
+resetButton.addEventListener("click", () => resetGame());
+
+function resetGame() {
+  // Ask the user for confirmation
+  const userConfirmation = prompt(
+    "Are you sure you want to delete your history? (yes/no)"
+  );
+
+  // Check if the user confirmed the reset
+  if (userConfirmation && userConfirmation.toLowerCase() === "yes") {
+    // Remove existing pits from the map
+    pits.forEach((pit) => {
+      const bounds = leaflet.latLngBounds([
+        [
+          NULL_ISLAND.lat + pit.i * board.tileWidth,
+          NULL_ISLAND.lng + pit.j * board.tileWidth,
+        ],
+        [
+          NULL_ISLAND.lat + (pit.i + 1) * board.tileWidth,
+          NULL_ISLAND.lng + (pit.j + 1) * board.tileWidth,
+        ],
+      ]);
+
+      // Use eachLayer to iterate over the layers within the bounds and remove them
+      map.eachLayer((layer) => {
+        if (layer instanceof leaflet.Rectangle) {
+          const layerBounds = layer.getBounds();
+          if (layerBounds.equals(bounds)) {
+            map.removeLayer(layer);
+          }
+        }
+      });
+    });
+
+    // Clear the pits array
+    pits.length = 0;
+
+    // Clear the movement history
+    playerMovementHistory = [];
+    renderMovementHistory();
+
+    // Reset the player marker to Null Island
+    playerMarker.setLatLng(NULL_ISLAND);
+    map.setView(NULL_ISLAND);
+
+    // Reset points and inventory
+    console.log("bitch");
+    points = 0;
+    inventory = [];
+    statusPanel.innerHTML = "No points yet...";
+
+    // Save the reset state to local storage
+    saveGameState();
+
+    // Reload the initial pits around Null Island
+    makeCells(NULL_ISLAND);
+  } else {
+    // If the user didn't confirm, do nothing or provide feedback
+    alert("Game state reset canceled.");
+  }
+}
 
 let points = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
@@ -142,50 +238,47 @@ interface Coin {
 
 let inventory: string[] = [];
 
-// //const pitPopups = new Map<Pit, leaflet.Popup>();
-// function updatePitPopup(pit: Pit, pitDisplay: leaflet.Rectangle) {
-//   const container = document.createElement("div");
-//   let numCoins = pit.value;
+const coinImages = [
+  "src/assets/ASlime.png",
+  "src/assets/BSlime.png",
+  "src/assets/CSlime.png",
+  "src/assets/DSlime.png",
+  "src/assets/ESlime.png",
+  "src/assets/FSlime.png",
+  "src/assets/GSlime.png",
+  "src/assets/HSlime.png",
+  "src/assets/ISlime.png",
+  "src/assets/JSlime.png",
+  "src/assets/KSlime.png",
+  "src/assets/OSlime.png",
+  "src/assets/PSlime.png",
+  "src/assets/QSlime.png",
+  "src/assets/SSlime.png",
+  "src/assets/TSlime.png",
+  "src/assets/USlime.png",
+  "src/assets/VSlime.png",
+  "src/assets/WSlime.png",
+  "src/assets/XSlime.png",
+  "src/assets/YSlime.png",
+  "src/assets/ZSlime.png",
+];
 
-//   const coinDescriptions = pit.coins.map((coin) => {
-//     const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
-//     return `
-//       <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
-//     `;
-//   });
-
-//   container.innerHTML = `
-//     <div>There is a pit here at i: "${pit.i}, j: ${
-//     pit.j
-//   }". It contains ${numCoins} </div>
-//     ${coinDescriptions.join("")}
-//     <button id="poke">poke</button>
-//     <button id="stash">stash</button>`;
-
-//   pitDisplay.bindPopup(() => {
-//     return container;
-//   });
-// }
-
-const THRESHOLD = 0.0001; // Adjust this value as needed
+const boardSize = 0.0001;
 function makePit(i: number, j: number, initialValue: number) {
-  // Check if a pit already exists at this location
   let numCoins = 0;
   let pit = new Pit(i, j);
   const existingPitIndex = pits.findIndex(
-    (pit) => Math.abs(pit.i - i) < THRESHOLD && Math.abs(pit.j - j) < THRESHOLD
+    (pit) => Math.abs(pit.i - i) < boardSize && Math.abs(pit.j - j) < boardSize
   );
 
   if (existingPitIndex !== -1) {
     //console.log("Pit already exists at this location");
     pit = pits[existingPitIndex];
 
-    // Update existing pit values if needed
     pit.value = initialValue;
     pit.coins = pits[existingPitIndex].coins;
   } else {
     //console.log("Creating pit at", i, j);
-    //const pit = new Pit(i, j);
     pit.value = initialValue;
     pits.push(pit);
     pit.coins = [];
@@ -212,25 +305,29 @@ function makePit(i: number, j: number, initialValue: number) {
     fillOpacity: 0.5,
   });
 
-  //const coins: Coin[] = []; // Array to hold coins in the pit
-
-  // // 1 to 4 coins in the pit
-  // let numCoins = Math.floor(Math.random() * 4) + 1;
-  // for (let serial = 0; serial < numCoins; serial++) {
-  //   pit.coins.push({ i, j, serial });
-  // }
   numCoins = pit.coins.length;
-
-  //let numCoinsText = numCoins;
 
   pitDisplay.bindPopup(() => {
     const container = document.createElement("div");
-    //let numCoins = pit.value;
     const coinDescriptions = pit.coins.map((coin) => {
       const uniqueId = `${coin.i}:${coin.j}#${coin.serial}`;
+      const randomImage =
+        coinImages[Math.floor(Math.random() * coinImages.length)];
       return `
-        <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+        <div id="coin-${coin.serial}">
+          <img src="${randomImage}" alt="Coin" style="width: 20px; height: 20px; margin-right: 5px;">
+          Coin ID: ${uniqueId}
+        </div>
       `;
+      // return `
+      //   <div id="coin-${coin.serial}">
+      //     <img src="src/assets/nightSlime.png" alt="Coin" style="width: 20px; height: 20px; margin-right: 5px;">
+      //     Coin ID: ${uniqueId}
+      //   </div>
+      // `;
+      // return `
+      //   <div id="coin-${coin.serial}">Coin ID: ${uniqueId}</div>
+      // `;
     });
 
     container.innerHTML = `
@@ -238,7 +335,6 @@ function makePit(i: number, j: number, initialValue: number) {
       <span id="coinDes">${coinDescriptions.join("")}</span>
       <button id="poke">poke</button>
       <button id="stash">stash</button>`;
-    //updatePitPopup(pit, pitDisplay);
     const poke = container.querySelector<HTMLButtonElement>("#poke")!;
     poke.addEventListener("click", () => {
       console.log("clicked");
@@ -269,7 +365,6 @@ function makePit(i: number, j: number, initialValue: number) {
           coinDescriptions.join("").toString();
         savePitsState();
         updateGameState();
-        //updatePitPopup(pit, pitDisplay);
       }
     });
 
@@ -308,7 +403,6 @@ function makePit(i: number, j: number, initialValue: number) {
             coinDescriptions.join("").toString();
           savePitsState();
           updateGameState();
-          //updatePitPopup(pit, pitDisplay);
         }
       }
     });
@@ -338,9 +432,9 @@ function saveGameState() {
   savePitsState();
 }
 
-// initial pits around Null Island
+// starting pits around Null Island
 makeCells(NULL_ISLAND);
-// Call this function whenever the game state changes
+
 function updateGameState() {
   saveGameState();
   //makeCells(playerMarker.getLatLng());
@@ -349,31 +443,39 @@ function updateGameState() {
 function loadPitsState() {
   const pitStatesString = localStorage.getItem("pitsState");
   if (pitStatesString) {
-    const pitStates = JSON.parse(pitStatesString);
-    pits.length = 0; // Clear the existing pits array
+    try {
+      const pitStates = JSON.parse(pitStatesString);
+      pits.length = 0; // Clear existing pits
 
-    pitStates.forEach((pitState: string) => {
-      const state = JSON.parse(pitState);
-      const pit = new Pit(state.i, state.j);
-      pit.fromMomento(pitState);
-      pits.push(pit);
-    });
+      pitStates.forEach((pitState: string) => {
+        const state = JSON.parse(pitState);
 
-    // Restore coins for existing pits
-    for (let i = 0; i < pits.length; i++) {
-      if (pitStates[i].coins) {
-        pits[i].coins = pitStates[i].coins;
-      }
+        if (
+          typeof state.i === "number" &&
+          !isNaN(state.i) &&
+          typeof state.j === "number" &&
+          !isNaN(state.j)
+        ) {
+          const pit = new Pit(state.i, state.j);
+          pit.fromMomento(pitState);
+          pits.push(pit);
+
+          if (state.coins) {
+            pit.coins = state.coins;
+          }
+
+          makePit(pit.i, pit.j, pit.value);
+        } else {
+          console.warn("Invalid coordinates in pit state:", state);
+        }
+      });
+    } catch (error) {
+      //chat gpt error catching recommendation
+      console.error("Error loading pits state:", error);
     }
-
-    // Create pits on the map
-    pits.forEach((pit) => {
-      makePit(pit.i, pit.j, pit.value);
-    });
   }
 }
 
-// Save pits state to local storage
 function savePitsState() {
   const pitStates = pits.map((pit) => {
     return pit.toMomento();
@@ -400,11 +502,31 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
 
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
         const initialValue = Math.floor(Math.random() * 10) + 1;
-        //console.log("Attempting to create pit at location:", i, j);
+        //console.log("create pit at location:", i, j);
         makePit(i, j, initialValue);
       }
+      // map.addEventListener("click", () => centerMapOnCell(i, j));
     });
   }
+}
+
+// function centerMapOnCell(i: number, j: number) {
+//   const centerLat = NULL_ISLAND.lat + (i + 0.5) * board.tileWidth;
+//   const centerLng = NULL_ISLAND.lng + (j + 0.5) * board.tileWidth;
+
+//   map.setView([centerLat, centerLng]);
+// }
+
+function renderMovementHistory() {
+  playerMovementPolyline?.remove();
+
+  playerMovementPolyline = leaflet.polyline(playerMovementHistory, {
+    color: "blue",
+    weight: 3,
+    opacity: 0.7,
+  });
+
+  playerMovementPolyline.addTo(map);
 }
 
 function movePlayer(direction: "north" | "south" | "east" | "west") {
@@ -440,6 +562,15 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
 
   playerMarker.setLatLng(newLatLng);
   map.setView(newLatLng);
+
+  playerMovementHistory.push(currentLatLng);
+
+  if (playerMovementHistory.length > 100) {
+    playerMovementHistory.shift();
+  }
+
+  renderMovementHistory();
+
   makeCells(newLatLng);
 }
 
