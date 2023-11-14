@@ -92,15 +92,7 @@ const jawgMatrix = L.tileLayer(
 
 jawgMatrix.addTo(map);
 
-// leaflet
-//   .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-//     maxZoom: 19,
-//     attribution:
-//       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-//   })
-//   .addTo(map);
-
-const playerMarker = leaflet.marker(NULL_ISLAND); // Initialize player at Null Island
+const playerMarker = leaflet.marker(NULL_ISLAND);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
@@ -110,14 +102,12 @@ let watchId: number | null = null;
 const sensorButton = document.querySelector("#sensor")!;
 sensorButton.addEventListener("click", () => {
   if (autoUpdatePosition) {
-    // If automatic updating is already enabled, disable it
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
     }
     autoUpdatePosition = false;
   } else {
-    // If automatic updating is not enabled, enable it
     watchId = navigator.geolocation.watchPosition((position) => {
       const playerLocation = {
         lat: position.coords.latitude,
@@ -128,28 +118,11 @@ sensorButton.addEventListener("click", () => {
       map.setView(playerLocation);
 
       makeCells(playerLocation);
-      //updateGameState();
     });
 
     autoUpdatePosition = true;
   }
 });
-/////////////update location on press/////////////////
-// const sensorButton = document.querySelector("#sensor")!;
-// sensorButton.addEventListener("click", () => {
-//   navigator.geolocation.watchPosition((position) => {
-//     const playerLocation = {
-//       lat: position.coords.latitude,
-//       lng: position.coords.longitude,
-//     };
-
-//     playerMarker.setLatLng(playerLocation);
-//     map.setView(playerLocation);
-
-//     makeCells(playerLocation);
-//     //updateGameState();
-//   });
-// });
 
 const moveButtonNorth = document.querySelector("#north")!;
 const moveButtonSouth = document.querySelector("#south")!;
@@ -165,14 +138,11 @@ const resetButton = document.querySelector("#reset")!;
 resetButton.addEventListener("click", () => resetGame());
 
 function resetGame() {
-  // Ask the user for confirmation
   const userConfirmation = prompt(
     "Are you sure you want to delete your history? (yes/no)"
   );
 
-  // Check if the user confirmed the reset
   if (userConfirmation && userConfirmation.toLowerCase() === "yes") {
-    // Remove existing pits from the map
     pits.forEach((pit) => {
       const bounds = leaflet.latLngBounds([
         [
@@ -185,7 +155,6 @@ function resetGame() {
         ],
       ]);
 
-      // Use eachLayer to iterate over the layers within the bounds and remove them
       map.eachLayer((layer) => {
         if (layer instanceof leaflet.Rectangle) {
           const layerBounds = layer.getBounds();
@@ -196,30 +165,22 @@ function resetGame() {
       });
     });
 
-    // Clear the pits array
     pits.length = 0;
 
-    // Clear the movement history
     playerMovementHistory = [];
     renderMovementHistory();
 
-    // Reset the player marker to Null Island
     playerMarker.setLatLng(NULL_ISLAND);
     map.setView(NULL_ISLAND);
 
-    // Reset points and inventory
-    console.log("bitch");
     points = 0;
     inventory = [];
     statusPanel.innerHTML = "No points yet...";
 
-    // Save the reset state to local storage
     saveGameState();
 
-    // Reload the initial pits around Null Island
     makeCells(NULL_ISLAND);
   } else {
-    // If the user didn't confirm, do nothing or provide feedback
     alert("Game state reset canceled.");
   }
 }
@@ -502,20 +463,11 @@ function makeCells(playerLocation: { lat: number; lng: number }) {
 
       if (luck([i, j].toString()) < PIT_SPAWN_PROBABILITY) {
         const initialValue = Math.floor(Math.random() * 10) + 1;
-        //console.log("create pit at location:", i, j);
         makePit(i, j, initialValue);
       }
-      // map.addEventListener("click", () => centerMapOnCell(i, j));
     });
   }
 }
-
-// function centerMapOnCell(i: number, j: number) {
-//   const centerLat = NULL_ISLAND.lat + (i + 0.5) * board.tileWidth;
-//   const centerLng = NULL_ISLAND.lng + (j + 0.5) * board.tileWidth;
-
-//   map.setView([centerLat, centerLng]);
-// }
 
 function renderMovementHistory() {
   playerMovementPolyline?.remove();
@@ -574,5 +526,4 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
   makeCells(newLatLng);
 }
 
-// // initial pits around Null Island
-// makeCells(NULL_ISLAND);
+//used chatgpt for various leaflet examples and documentation to expand beyond professors examples of momento and flyweight patterns
